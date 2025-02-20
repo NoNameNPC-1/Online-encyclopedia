@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Enciclopedia de la Tierra Media</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cinzel+Decorative:wght@400;700;900&family=DotGothic16&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: "Cinzel Decorative", serif;
+            font-weight: 400;
+            font-style: normal;
+        }
+        .topnav {
+            overflow: hidden;
+            background-color: #333;
+            padding: 10px;
+        }
+        .topnav a {
+            float: left;
+            color: #f2f2f2;
+            text-align: center;
+            padding: 8px 16px;
+            text-decoration: none;
+            font-size: 18px;
+        }
+        .topnav a:hover {
+            background-color: #ddd;
+            color: black;
+        }
+        .search-container {
+            margin: 20px;
+            position: relative;
+        }
+        .search-container input {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        .autocomplete-results {
+            border: 1px solid #ccc;
+            max-height: 200px;
+            overflow-y: auto;
+            position: absolute;
+            width: 100%;
+            background: white;
+            display: none;
+        }
+        .autocomplete-results div {
+            padding: 10px;
+            cursor: pointer;
+        }
+        .autocomplete-results div:hover {
+            background-color: #f0f0f0;
+        }
+        .section {
+            padding: 16px;
+        }
+        .section h2 {
+            border-bottom: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <h1 style="text-align: center;">Enciclopedia de la Tierra Media</h1>
+    
+    <!-- Menú Superior -->
+    <div class="topnav">
+        <script>
+            for (let i = 65; i <= 90; i++) {
+                document.write('<a href="#' + String.fromCharCode(i) + '">' + String.fromCharCode(i) + '</a>');
+            }
+        </script>
+    </div>
+
+    <!-- Buscador -->
+    <div class="search-container">
+        <input type="text" id="search" placeholder="Buscar palabras...">
+        <div id="autocomplete-results" class="autocomplete-results"></div>
+    </div>
+
+    <!-- Contenido dinámico -->
+    <div id="content"></div>
+
+    <script>
+        let entries = {};
+        let searchResults = [];
+
+        async function fetchEntries() {
+            try {
+                const response = await fetch('/entries_by_letter');
+                entries = await response.json();
+
+                const contentDiv = document.getElementById('content');
+                for (let i = 65; i <= 90; i++) {
+                    const letter = String.fromCharCode(i);
+                    const section = document.createElement('div');
+                    section.className = 'section';
+                    section.id = letter;
+
+                    const header = document.createElement('h2');
+                    header.textContent = 'Letra ' + letter;
+                    section.appendChild(header);
+
+                    if (entries[letter]) {
+                        const ul = document.createElement('ul');
+                        entries[letter].forEach(entry => {
+                            const li = document.createElement('li');
+                            li.innerHTML = `<strong id="${entry.word}">${entry.word}:</strong> ${entry.definition}`;
+                            ul.appendChild(li);
+                        });
+                        section.appendChild(ul);
+                    } else {
+                        const p = document.createElement('p');
+                        p.textContent = 'No hay palabras registradas para esta letra.';
+                        section.appendChild(p);
+                    }
+
+                    contentDiv.appendChild(section);
+                }
+            } catch (error) {
+                console.error('Error fetching entries:', error);
+            }
+        }
+
+        function searchAutocomplete(query) {
+            if (!query) {
+                searchResults = [];
+                renderAutocompleteResults();
+                return;
+            }
+
+            searchResults = [];
+            Object.values(entries).forEach(words => {
+                words.forEach(entry => {
+                    if (entry.word.toLowerCase().includes(query.toLowerCase())) {
+                        searchResults.push(entry);
+                    }
+                });
+            });
+
+            searchResults.sort((a, b) => b.searchCount - a.searchCount || a.word.localeCompare(b.word));
+            searchResults = searchResults.slice(0, 5);
+            renderAutocompleteResults();
+        }
+
+        function renderAutocompleteResults() {
+            const resultsDiv = document.getElementById('autocomplete-results');
+            resultsDiv.innerHTML = '';
+            resultsDiv.style.display = searchResults.length > 0 ? 'block' : 'none';
+
+            searchResults.forEach(result => {
+                const resultDiv = document.createElement('div');
+                resultDiv.textContent = result.word;
+                resultDiv.addEventListener('click', () => {
+                    location.href = `#${result.word}`;
+                    resultsDiv.style.display = 'none';
+                });
+                resultsDiv.appendChild(resultDiv);
+            });
+        }
+
+        document.getElementById('search').addEventListener('input', (e) => {
+            searchAutocomplete(e.target.value);
+        });
+
+        document.addEventListener('click', (e) => {
+            const searchContainer = document.querySelector('.search-container');
+            if (!searchContainer.contains(e.target)) {
+                document.getElementById('autocomplete-results').style.display = 'none';
+            }
+        });
+
+        document.getElementById('search').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                searchAutocomplete(e.target.value);
+            }
+        });
+        
+        fetchEntries();
+    </script>
+</body>
+</html>
